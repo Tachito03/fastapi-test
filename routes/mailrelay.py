@@ -55,37 +55,49 @@ async def getTemplates(centro:int, token: str = Depends(token_auth_scheme)):
         return result
 
 @mails.get('/getSent/{centro}', tags=["For mails"])
-async def getSent(centro:int):
+async def getSent(centro:int, token: str = Depends(token_auth_scheme)):
     sql_sent = "SELECT descripcion, qoute, enviados FROM clientes WHERE id=%s"
-    resultado = conn.execute(sql_sent, centro).first()
 
-    if resultado is None:
+    result = VerifyToken(token.credentials).verify()
+    if result.get("status"):
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return result
+    else:
+        result = conn.execute(sql_sent, centro).first()
+
+    if result is None:
         return JSONResponse(status_code=401, content={"message": "El recurso solicitado no existe.", "status":"404"})
     else:
-        disponibles = resultado.qoute - resultado.enviados
-        return JSONResponse(status_code=200, content={"Centro": resultado.descripcion , "Enviados": str(resultado.enviados), "Qouta disponible": str(disponibles)})
+        disponibles = result.qoute - result.enviados
+        return JSONResponse(status_code=200, content={"Centro": result.descripcion , "Enviados": str(result.enviados), "Qouta disponible": str(disponibles)})
 
 @mails.get('/showTemplate/{idtemplate}', tags=["For mails"])
-async def getSent(idtemplate:int, request:Request):
+async def getSent(idtemplate:int, request:Request, token: str = Depends(token_auth_scheme)):
     get_template = "SELECT nombre, descripcion, template FROM templates WHERE idtemplate=%s"
-    resultado = conn.execute(get_template, idtemplate).first()
+    result = VerifyToken(token.credentials).verify()
+    
+    if result.get("status"):
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return result
+    else:
+        result = conn.execute(get_template, idtemplate).first()
 
-    if resultado is None:
+    if result is None:
         return JSONResponse(status_code=401, content={"message": "El recurso solicitado no existe.", "status":"404"})
     else:
-        html = resultado.template
+        html = result.template
 
         f = open('template-test.html', 'w')
-        html = resultado.template
+        html = result.template
         f.write(html)
         f.close()
         method_document = 'showTemplate'
         path_url = request.base_url
         full_path = str(path_url) + method_document
 
-        return JSONResponse(status_code=200, content={"Nombre": resultado.nombre , "Descripcion": resultado.descripcion, "Link plantilla": full_path})
+        return JSONResponse(status_code=200, content={"Nombre": result.nombre , "Descripcion": result.descripcion, "Link plantilla": full_path})
 
-@mails.post('/sendEmail', response_model=SendMail, tags=["For mails"])
+@mails.post('/sendEmail', tags=["For mails"])
 async def sendEmail(datamails: SendMail, token: str = Depends(token_auth_scheme)):
 
     sql_template = "SELECT idtemplate, template FROM templates WHERE idtemplate = %s"
