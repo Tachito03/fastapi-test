@@ -86,43 +86,48 @@ async def getSent(idtemplate:int, request:Request):
         return JSONResponse(status_code=200, content={"Nombre": resultado.nombre , "Descripcion": resultado.descripcion, "Link plantilla": full_path})
 
 @mails.post('/sendEmail', response_model=SendMail, tags=["For mails"])
-async def sendEmail(datamails: SendMail):
+async def sendEmail(datamails: SendMail, token: str = Depends(token_auth_scheme)):
 
     sql_template = "SELECT idtemplate, template FROM templates WHERE idtemplate = %s"
     query_template = conn.execute(sql_template, datamails.idtemplate).first()
 
-    msg = EmailMessage()
-    msg['Subject'] = datamails.subject
-    msg['From'] = 'arellanos.baaeus@gmail.com'
-    msg['To'] = datamails.to
-    emailvalidate = datamails.to
-    html = query_template.template
-    msg.add_alternative(html, subtype="html")
-    if re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", emailvalidate):
-        try:
-            with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
+    result = VerifyToken(token.credentials).verify()
+    if result.get("status"):
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return result
+    else:
+        msg = EmailMessage()
+        msg['Subject'] = datamails.subject
+        msg['From'] = 'arellanos.baaeus@gmail.com'
+        msg['To'] = datamails.to
+        emailvalidate = datamails.to
+        html = query_template.template
+        msg.add_alternative(html, subtype="html")
+        if re.match(r"(^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+$)", emailvalidate):
+            try:
+                with smtplib.SMTP_SSL('smtp.gmail.com', 465) as smtp:
 
-                smtp.login('arellanos.baaeus@gmail.com','vkkvjuzevdnnfwcw')
+                    smtp.login('arellanos.baaeus@gmail.com','vkkvjuzevdnnfwcw')
 
-                sql_enviados = "SELECT qoute, enviados FROM clientes WHERE id=%s"
-                qouta_centro_enviados = conn.execute(sql_enviados, datamails.centro).first()
-                if qouta_centro_enviados.enviados < qouta_centro_enviados.qoute:
-                    smtp.send_message(msg)
+                    sql_enviados = "SELECT qoute, enviados FROM clientes WHERE id=%s"
+                    qouta_centro_enviados = conn.execute(sql_enviados, datamails.centro).first()
+                    if qouta_centro_enviados.enviados < qouta_centro_enviados.qoute:
+                        smtp.send_message(msg)
 
-                    enviados_centro = qouta_centro_enviados.enviados + 1
-                    update_qouta = "UPDATE clientes SET enviados = %s WHERE id=%s"
-                    num_qoute = conn.execute(update_qouta,enviados_centro, datamails.centro)
-                    return JSONResponse(status_code=200, content={"message": "se ha enviado el email", "status":"200"})
-                else:
-                    return JSONResponse(status_code=401, content={"message": "se ha excedido el limite de envios", "status":"401"})
+                        enviados_centro = qouta_centro_enviados.enviados + 1
+                        update_qouta = "UPDATE clientes SET enviados = %s WHERE id=%s"
+                        num_qoute = conn.execute(update_qouta,enviados_centro, datamails.centro)
+                        return JSONResponse(status_code=200, content={"message": "se ha enviado el email", "status":"200"})
+                    else:
+                        return JSONResponse(status_code=401, content={"message": "se ha excedido el limite de envios", "status":"401"})
 
-        except SMTPResponseException as e:
-            error_code = e.smtp_code
-            error_message = e.smtp_error
+            except SMTPResponseException as e:
+                error_code = e.smtp_code
+                error_message = e.smtp_error
 
-            return JSONResponse(status_code=error_code, content={"message": error_message})
-    else: 
-        return JSONResponse(status_code=401, content={"message": "El email es inválido "})
+                return JSONResponse(status_code=error_code, content={"message": error_message})
+        else: 
+            return JSONResponse(status_code=401, content={"message": "El email es inválido "})
 
 
 
