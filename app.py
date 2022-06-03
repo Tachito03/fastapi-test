@@ -1,6 +1,8 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from routes.mailrelay import mails
 from routes.heartrate import heart
+
+
 
 app = FastAPI(title='endPoints ', 
               description='Primera versión de envio de mails, detalle de centros, calcúlo de frecuencia cardíaca ', 

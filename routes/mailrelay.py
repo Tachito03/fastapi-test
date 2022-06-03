@@ -110,7 +110,7 @@ async def sendEmail(datamails: SendMail):
 
 
 
-@mails.get('/showTemplate', response_class=HTMLResponse, tags=["For mails"])
+@mails.get('/showTemplate', response_class=HTMLResponse, tags=["For mails"], include_in_schema=False)
 async def getDocument():
     f = open('template-test.html', 'r')
     html = f.read()
