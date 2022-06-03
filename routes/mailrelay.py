@@ -1,12 +1,20 @@
 import email
+from telnetlib import STATUS
+from unittest import result
+from urllib import response
 from pydantic import BaseModel
-from fastapi import APIRouter, FastAPI, Request
+from fastapi import APIRouter, FastAPI, Request, Depends, Response, status
 from sqlalchemy import null
 from config.db import conn
 from models.mails import clientes, template
 from schemas.mails import Clientes, Template, SendMail
 from starlette.responses import JSONResponse
 from fastapi.responses import HTMLResponse
+
+#seguridad
+from fastapi.security import HTTPBearer
+token_auth_scheme = HTTPBearer()
+from utils import VerifyToken
 
 #librerias para mails
 import smtplib
@@ -15,27 +23,36 @@ from email.message import EmailMessage
 import re
 
 mails = APIRouter()
-
-@mails.get('/getQuota/{centro}', response_model=Clientes, tags=["For mails"])
-async def getQuota(centro:int):
+# response_model=Clientes,
+@mails.get('/getQuota/{centro}', tags=["For mails"])
+async def getQuota(centro:int, response: Response, token: str = Depends(token_auth_scheme)):
     cadena = "SELECT descripcion, qoute FROM clientes WHERE id=%s"
-    resultado = conn.execute(cadena, centro).first()
-
-    if resultado is None:
-        return JSONResponse(status_code=401, content={"message": "Sin resultados", "status":"401"})
+    result = VerifyToken(token.credentials).verify()
+    if result.get("status"):
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return result
     else:
-        return resultado
+        result = conn.execute(cadena, centro).first()
 
+    if result is None:
+        return JSONResponse(status_code=401, content={"message": "El recurso solicitado no existe.", "status":"404"})
+    else:
+        return result
 
-@mails.get('/getTemplates/{centro}', response_model=Template, tags=["For mails"])
-async def getTemplates(centro:int):
+@mails.get('/getTemplates/{centro}', tags=["For mails"])
+async def getTemplates(centro:int, token: str = Depends(token_auth_scheme)):
     sql = "SELECT id, nombre, descripcion, fecha_creado FROM templates WHERE idtemplate=%s"
-    res = conn.execute(sql, centro).first()
-
-    if res is None:
-        return JSONResponse(status_code=401, content={"message": "Sin resultados", "status":"401"})
+    result = VerifyToken(token.credentials).verify()
+    if result.get("status"):
+        response.status_code = status.HTTP_400_BAD_REQUEST
+        return result
     else:
-        return res
+        result = conn.execute(sql, centro).first()
+    
+    if result is None: 
+        return JSONResponse(status_code=401, content={"message": "El recurso solicitado no existe.", "status":"404"})
+    else:
+        return result
 
 @mails.get('/getSent/{centro}', tags=["For mails"])
 async def getSent(centro:int):
@@ -43,7 +60,7 @@ async def getSent(centro:int):
     resultado = conn.execute(sql_sent, centro).first()
 
     if resultado is None:
-        return JSONResponse(status_code=401, content={"message": "Sin resultados", "status":"401"})
+        return JSONResponse(status_code=401, content={"message": "El recurso solicitado no existe.", "status":"404"})
     else:
         disponibles = resultado.qoute - resultado.enviados
         return JSONResponse(status_code=200, content={"Centro": resultado.descripcion , "Enviados": str(resultado.enviados), "Qouta disponible": str(disponibles)})
@@ -54,7 +71,7 @@ async def getSent(idtemplate:int, request:Request):
     resultado = conn.execute(get_template, idtemplate).first()
 
     if resultado is None:
-        return JSONResponse(status_code=401, content={"message": "Sin resultados", "status":"401"})
+        return JSONResponse(status_code=401, content={"message": "El recurso solicitado no existe.", "status":"404"})
     else:
         html = resultado.template
 
@@ -117,5 +134,3 @@ async def getDocument():
     return HTMLResponse(content=html, status_code=200)
     f.close()
     
-    
-
