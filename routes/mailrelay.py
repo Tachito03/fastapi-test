@@ -10,17 +10,16 @@ from models.mails import clientes, template
 from schemas.mails import Clientes, Template, SendMail
 from starlette.responses import JSONResponse
 from fastapi.responses import HTMLResponse
-
 #seguridad
 from fastapi.security import HTTPBearer
 token_auth_scheme = HTTPBearer()
 from utils import VerifyToken
-
 #librerias para mails
 import smtplib
 from smtplib import SMTPResponseException
 from email.message import EmailMessage
 import re
+#import regex as re
 
 mails = APIRouter()
 # response_model=Clientes,

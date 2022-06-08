@@ -14,9 +14,9 @@ def set_up():
         config = config["AUTH0"]
     else:
         config = {
-            "DOMAIN": os.getenv("DOMAIN", "dev-3efyrat1.us.auth0.com"),
-            "API_AUDIENCE": os.getenv("API_AUDIENCE", "https://fastapi-auth0-example.com"),
-            "ISSUER": os.getenv("ISSUER", "https://dev-3efyrat1.us.auth0.com/"),
+            "DOMAIN": os.getenv("DOMAIN", "dev-ht2oh7xb.us.auth0.com"),
+            "API_AUDIENCE": os.getenv("API_AUDIENCE", "sendmailapi"),
+            "ISSUER": os.getenv("ISSUER", "https://dev-ht2oh7xb.us.auth0.com/"),
             "ALGORITHMS": os.getenv("ALGORITHMS", "RS256"),
         }
     return config
